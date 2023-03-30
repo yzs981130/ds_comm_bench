@@ -7,8 +7,8 @@ import argparse
 
 COMMS_BENCH_DIR = os.path.join(os.path.dirname(__file__), "../")
 sys.path.append(COMMS_BENCH_DIR)
-from .constants import *
-from .accelerator import accelerator
+from constants import *
+from accelerator import accelerator
 
 def get_accelerator():
     return accelerator

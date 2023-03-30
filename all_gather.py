@@ -6,10 +6,9 @@ import sys, os, time
 COMMS_BENCH_DIR = os.path.join(os.path.dirname(__file__), "../")
 sys.path.append(COMMS_BENCH_DIR)
 
-from .utils import *
-from .constants import *
-from .accelerator import accelerator
-from deepspeed.comm import TorchBackend
+from utils import *
+from constants import *
+from accelerator import accelerator
 
 def get_accelerator():
     return accelerator
@@ -20,7 +19,7 @@ def timed_all_gather(input, output, args):
     if args.dist == 'torch':
         import torch.distributed as dist
 
-        all_gather_func = TorchBackend.get_all_gather_function()
+        all_gather_func = torch.distributed._all_gather_base
     elif args.dist == 'deepspeed':
         import deepspeed.comm as dist
 
@@ -94,11 +93,12 @@ def run_all_gather(local_rank, args):
             sync_all()
             timed_all_gather(input, output, args)
     else:
-        # all_gather_into_tensor saves memory
-        if ((args.dist == 'torch' or args.dist == 'deepspeed') and dist.has_all_gather_into_tensor()):
-            mem_factor = args.mem_factor + 0.2
-        else:
-            mem_factor = args.mem_factor
+        # # all_gather_into_tensor saves memory
+        # if ((args.dist == 'torch' or args.dist == 'deepspeed') and dist.has_all_gather_into_tensor()):
+        #     mem_factor = args.mem_factor + 0.2
+        # else:
+        #     mem_factor = args.mem_factor
+        mem_factor = args.mem_factor
         # Send the biggest message size our GPUs can fit. If you're facing OOM errors, reduce the mem_factor
         sync_all()
         elements_per_gpu = max_numel(comm_op='all_gather',

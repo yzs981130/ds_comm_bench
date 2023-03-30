@@ -1,5 +1,5 @@
 '''Copyright The Microsoft DeepSpeed Team'''
-from .accelerator import accelerator
+from accelerator import accelerator
 
 def get_accelerator():
     return accelerator
