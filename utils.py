@@ -31,22 +31,26 @@ def init_torch_distributed(backend):
     if 'MASTER_PORT' not in os.environ:
         os.environ['MASTER_PORT'] = str(TORCH_DISTRIBUTED_DEFAULT_PORT)
     if 'MASTER_ADDR' not in os.environ:
+        import subprocess
         try:
             from mpi4py import MPI
+            comm = MPI.COMM_WORLD
+            rank = comm.Get_rank()
+            master_addr = None
+            if rank == 0:
+                hostname_cmd = ["hostname -I"]
+                result = subprocess.check_output(hostname_cmd, shell=True)
+                master_addr = result.decode('utf-8').split()[0]
+            master_addr = comm.bcast(master_addr, root=0)
         except ModuleNotFoundError:
-            print(
-                "Cannot import mpi4py and MASTER_ADDR not set. Please either install mpi4py or set the MASTER_ADDR on all ranks"
-            )
-            raise Exception
-        import subprocess
-        comm = MPI.COMM_WORLD
-        rank = comm.Get_rank()
-        master_addr = None
-        if rank == 0:
-            hostname_cmd = ["hostname -I"]
-            result = subprocess.check_output(hostname_cmd, shell=True)
-            master_addr = result.decode('utf-8').split()[0]
-        master_addr = comm.bcast(master_addr, root=0)
+            result = subprocess.check_output('scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1', shell=True, stderr=subprocess.STDOUT)
+            result = result.decode('utf8').strip()
+            if "command not found" in result:
+                print(
+                    "Cannot import mpi4py or scontrol and MASTER_ADDR not set. Please either install mpi4py or slurm or set the MASTER_ADDR on all ranks"
+                )
+                raise Exception
+            master_addr = result
         os.environ['MASTER_ADDR'] = master_addr
     local_rank = env2int(
         ['LOCAL_RANK', 'MPI_LOCALRANKID', 'OMPI_COMM_WORLD_LOCAL_RANK', 'MV2_COMM_WORLD_LOCAL_RANK', 'SLURM_LOCALID'])
