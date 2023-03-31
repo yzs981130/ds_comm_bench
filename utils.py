@@ -5,8 +5,7 @@ import os, sys
 import math
 import argparse
 
-COMMS_BENCH_DIR = os.path.join(os.path.dirname(__file__), "../")
-sys.path.append(COMMS_BENCH_DIR)
+
 from constants import *
 from accelerator import accelerator
 
@@ -32,25 +31,10 @@ def init_torch_distributed(backend):
         os.environ['MASTER_PORT'] = str(TORCH_DISTRIBUTED_DEFAULT_PORT)
     if 'MASTER_ADDR' not in os.environ:
         import subprocess
-        try:
-            from mpi4py import MPI
-            comm = MPI.COMM_WORLD
-            rank = comm.Get_rank()
-            master_addr = None
-            if rank == 0:
-                hostname_cmd = ["hostname -I"]
-                result = subprocess.check_output(hostname_cmd, shell=True)
-                master_addr = result.decode('utf-8').split()[0]
-            master_addr = comm.bcast(master_addr, root=0)
-        except ModuleNotFoundError:
-            result = subprocess.check_output('scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1', shell=True, stderr=subprocess.STDOUT)
-            result = result.decode('utf8').strip()
-            if "command not found" in result:
-                print(
-                    "Cannot import mpi4py or scontrol and MASTER_ADDR not set. Please either install mpi4py or slurm or set the MASTER_ADDR on all ranks"
-                )
-                raise Exception
-            master_addr = result
+        result = subprocess.check_output('scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1', shell=True)
+        master_addr = result.decode('utf8').strip()
+        if master_addr == '':
+            master_addr = '127.0.0.1'
         os.environ['MASTER_ADDR'] = master_addr
     local_rank = env2int(
         ['LOCAL_RANK', 'MPI_LOCALRANKID', 'OMPI_COMM_WORLD_LOCAL_RANK', 'MV2_COMM_WORLD_LOCAL_RANK', 'SLURM_LOCALID'])
@@ -85,6 +69,7 @@ def init_processes(local_rank, args):
     else:
         print_rank_0(f"distributed framework {args.dist} not supported")
         exit(0)
+    print_rank_0(f"distributed framework {args.dist} initialized")
 
 
 def print_rank_0(message):

@@ -2,8 +2,7 @@
 
 import sys, os
 
-COMMS_BENCH_DIR = os.path.join(os.path.dirname(__file__), "../")
-sys.path.append(COMMS_BENCH_DIR)
+
 
 from utils import *
 from all_reduce import run_all_reduce
