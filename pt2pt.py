@@ -21,32 +21,36 @@ def timed_pt2pt(input, args):
 
     sync_all()
     # Warmups, establish connections, etc.
+    src_rank, dst_rank = 0, 1
+    local_size = get_accelerator().device_count()
+    if dist.get_world_size() > local_size:
+        dst_rank = local_size
     for i in range(args.warmups):
-        if dist.get_rank() == 0:
+        if dist.get_rank() == src_rank:
             if args.async_op:
-                dist.isend(input, 1)
+                dist.isend(input, dst_rank)
             else:
-                dist.send(input, 1)
-        if dist.get_rank() == 1:
+                dist.send(input, dst_rank)
+        if dist.get_rank() == dst_rank:
             if args.async_op:
-                dist.irecv(input, src=0)
+                dist.irecv(input, src=src_rank)
             else:
-                dist.recv(input, src=0)
+                dist.recv(input, src=src_rank)
     sync_all()
 
     # time the actual comm op trials times and average it
     pre = time.perf_counter()
     for i in range(args.trials):
-        if dist.get_rank() == 0:
+        if dist.get_rank() == src_rank:
             if args.async_op:
-                dist.isend(input, 1)
+                dist.isend(input, dst_rank)
             else:
-                dist.send(input, 1)
-        if dist.get_rank() == 1:
+                dist.send(input, dst_rank)
+        if dist.get_rank() == dst_rank:
             if args.async_op:
-                dist.irecv(input, src=0)
+                dist.irecv(input, src=src_rank)
             else:
-                dist.recv(input, src=0)
+                dist.recv(input, src=src_rank)
 
     sync_all()
     duration = time.perf_counter() - pre
